@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Product Matcher</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Simple animation for the loader */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loader {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-top-color: #3b82f6; /* Tailwind blue-500 */
+            animation: spin 1s linear infinite;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <!-- Header Section -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900">Visual Product Matcher</h1>
+            <p class="text-lg text-gray-600 mt-2">Find visually similar products from our catalog with AI.</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Left Column: Upload and Preview -->
+            <aside class="lg:col-span-4 bg-white p-6 rounded-2xl shadow-lg h-fit">
+                <h2 class="text-2xl font-semibold mb-4">Upload Your Image</h2>
+                 <div id="upload-disabled-overlay" class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10 rounded-2xl">
+                    <div class="text-center">
+                        <div class="loader w-8 h-8 rounded-full mx-auto"></div>
+                        <p class="mt-2 text-gray-600">Connecting to database...</p>
+                    </div>
+                </div>
+                
+                <!-- File Upload -->
+                <div>
+                    <label for="file-upload" class="block text-sm font-medium text-gray-700 mb-2">Upload from device:</label>
+                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                        <div class="space-y-1 text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            <div class="flex text-sm text-gray-600">
+                                <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+                                    <span>Upload a file</span>
+                                    <input id="file-upload" name="file-upload" type="file" class="sr-only" accept="image/*" disabled>
+                                </label>
+                                <p class="pl-1">or drag and drop</p>
+                            </div>
+                            <p class="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="my-6 text-center text-sm text-gray-500">OR</div>
+
+                <!-- URL Upload -->
+                <form id="url-form">
+                    <label for="image-url" class="block text-sm font-medium text-gray-700 mb-2">Paste image URL:</label>
+                    <div class="flex gap-2">
+                        <input type="url" id="image-url" class="flex-grow w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="https://example.com/image.jpg" disabled>
+                        <button type="submit" id="url-submit-btn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50" disabled>
+                            Go
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Error Message Display -->
+                <div id="error-message" class="hidden mt-4 text-sm text-red-600 bg-red-100 p-3 rounded-md"></div>
+
+                <!-- Image Preview Section -->
+                <div id="image-preview-container" class="hidden mt-6">
+                    <h3 class="font-semibold text-lg mb-2">Your Image:</h3>
+                    <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-lg bg-gray-100">
+                        <img id="image-preview" src="" alt="Image preview" class="w-full h-full object-cover object-center">
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Right Column: Search Results -->
+            <section class="lg:col-span-8">
+                <!-- Initial State / Placeholder -->
+                <div id="results-placeholder" class="flex flex-col items-center justify-center h-full bg-white p-8 rounded-2xl shadow-lg text-center">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 text-gray-300" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 8h.01" /><path d="M12.5 21h-6.5a3 3 0 0 1 -3 -3v-12a3 3_ 0 0 1 3 -3h12a3 3 0 0 1 3 3v6.5" /><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l4 4" /><path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3" /><path d="M19 16v6" /><path d="M22 19l-3 3l-3 -3" /></svg>
+                    <h2 class="mt-4 text-2xl font-semibold text-gray-700">Awaiting Image</h2>
+                    <p class="mt-1 text-gray-500">Upload an image to find similar products.</p>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loading-state" class="hidden flex-col items-center justify-center h-full bg-white p-8 rounded-2xl shadow-lg text-center">
+                    <div class="loader w-12 h-12 rounded-full"></div>
+                    <h2 id="loading-text" class="mt-6 text-2xl font-semibold text-gray-700">Finding similar products...</h2>
+                    <p class="mt-1 text-gray-500">The AI is analyzing your image.</p>
+                </div>
+
+                <!-- Results Display -->
+                <div id="results-container" class="hidden">
+                    <div class="bg-white p-6 rounded-2xl shadow-lg">
+                        <!-- Filters -->
+                        <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                            <h2 class="text-2xl font-semibold text-gray-900">Similar Products Found</h2>
+                            <div class="flex items-center gap-4 mt-4 md:mt-0">
+                                <label for="similarity-filter" class="text-sm font-medium">Filter by similarity:</label>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-gray-500">70%</span>
+                                    <input id="similarity-filter" type="range" min="70" max="100" value="70" class="w-32">
+                                    <span class="text-xs text-gray-500">100%</span>
+                                </div>
+                                <span id="filter-value" class="text-sm font-semibold text-indigo-600 w-10 text-center">≥70%</span>
+                            </div>
+                        </div>
+
+                        <!-- Product Grid -->
+                        <div id="results-grid" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-8">
+                            <!-- Product cards will be injected here -->
+                        </div>
+
+                         <div id="no-results-message" class="hidden text-center py-12">
+                            <h3 class="text-xl font-medium text-gray-700">No products match your filter.</h3>
+                            <p class="text-gray-500 mt-1">Try adjusting the similarity score or using a different image.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script type="module">
+        // --- Firebase SDK Imports ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // --- DATABASE ---
+            let productDatabase = [];
+
+            // --- DOM Elements ---
+            const fileUpload = document.getElementById('file-upload');
+            const urlForm = document.getElementById('url-form');
+            const imageUrlInput = document.getElementById('image-url');
+            const urlSubmitBtn = document.getElementById('url-submit-btn');
+            const uploadDisabledOverlay = document.getElementById('upload-disabled-overlay');
+            const errorMessage = document.getElementById('error-message');
+            const imagePreviewContainer = document.getElementById('image-preview-container');
+            const imagePreview = document.getElementById('image-preview');
+            
+            const resultsPlaceholder = document.getElementById('results-placeholder');
+            const loadingState = document.getElementById('loading-state');
+            const loadingText = document.getElementById('loading-text');
+            const resultsContainer = document.getElementById('results-container');
+            const resultsGrid = document.getElementById('results-grid');
+            const noResultsMessage = document.getElementById('no-results-message');
+
+            const similarityFilter = document.getElementById('similarity-filter');
+            const filterValue = document.getElementById('filter-value');
+            
+            // --- State ---
+            let currentResults = [];
+
+            // --- Firebase Setup ---
+            let db, auth;
+
+            const initFirebase = async () => {
+                try {
+                    // --- START: PASTE YOUR FIREBASE CONFIG HERE ---
+                    const firebaseConfig = {
+                        apiKey: "AIzaSyCaFjY4qLbejogWMwsMTnZVuYcEu7hwcoo",
+                        authDomain: "visual-product-matcher-8df45.firebaseapp.com",
+                        projectId: "visual-product-matcher-8df45",
+                        storageBucket: "visual-product-matcher-8df45.appspot.com",
+                        messagingSenderId: "853343026926",
+                        appId: "1:853343026926:web:5cad80a19c8d7dfdd63dff",
+                        measurementId: "G-C5518YNY83"
+                    };
+                    // --- END: PASTE YOUR FIREBASE CONFIG HERE ---
+
+                    if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+                       throw new Error("Firebase config is missing required fields like apiKey or projectId.");
+                    }
+                    
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    // Sign in anonymously to access Firestore
+                    await signInAnonymously(auth);
+                    
+                    await fetchProductsFromFirestore();
+
+                } catch (error) {
+                    console.error("Firebase Initialization Error:", error);
+                    let userMessage = "Could not connect to the product database.";
+                    // Provide more specific feedback from the Firebase error object if available
+                    if (error.code) {
+                        switch (error.code) {
+                            case 'auth/invalid-api-key':
+                                userMessage = "Your Firebase API Key is invalid. Please check it in your project settings.";
+                                break;
+                            case 'auth/configuration-not-found':
+                                userMessage = "Firebase configuration not found. Please check: 1) Your firebaseConfig object is correct. 2) 'Anonymous' sign-in is enabled in the Firebase console. 3) Your API key has no HTTP referrer restrictions.";
+                                break;
+                            case 'permission-denied':
+                                userMessage = "Permission denied. Please check your Firestore security rules to allow read access.";
+                                break;
+                            default:
+                                userMessage = `An error occurred: ${error.message}`;
+                        }
+                    } else if (error.message) {
+                         userMessage = `Connection Error: ${error.message}`;
+                    }
+                    
+                    displayError(userMessage);
+                    uploadDisabledOverlay.innerHTML = `<p class="text-red-600 p-4 text-center">${userMessage}</p>`;
+                }
+            };
+            
+            const fetchProductsFromFirestore = async () => {
+                try {
+                    // When using your own Firebase project, the collection is typically at the root.
+                    const productsCollectionRef = collection(db, `products`);
+                    const querySnapshot = await getDocs(productsCollectionRef);
+                    productDatabase = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    
+                    if (productDatabase.length > 0) {
+                        enableUploads();
+                    } else {
+                         // Don't throw an error, just inform the user.
+                         const userMessage = "No products found. In Firestore, create a collection named 'products' and add product documents to it.";
+                         displayError(userMessage);
+                         uploadDisabledOverlay.innerHTML = `<p class="text-gray-600 p-4 text-center">${userMessage}</p>`;
+                    }
+                } catch (error) {
+                     console.error("Error fetching products:", error);
+                     let userMessage = "Could not load products from the database.";
+                     if(error.code === 'permission-denied') {
+                        userMessage = "Permission Denied: Check your Firestore security rules to allow reads."
+                     }
+                     displayError(userMessage);
+                     uploadDisabledOverlay.innerHTML = `<p class="text-red-600 p-4 text-center">${userMessage}</p>`;
+                }
+            };
+
+            const enableUploads = () => {
+                uploadDisabledOverlay.classList.add('hidden');
+                fileUpload.disabled = false;
+                imageUrlInput.disabled = false;
+                urlSubmitBtn.disabled = false;
+            };
+
+            // --- Functions ---
+            
+            const displayError = (message) => {
+                errorMessage.textContent = message;
+                errorMessage.classList.remove('hidden');
+            };
+
+            const clearError = () => {
+                errorMessage.textContent = '';
+                errorMessage.classList.add('hidden');
+            };
+
+            const switchViewState = (state) => {
+                resultsPlaceholder.classList.add('hidden');
+                loadingState.classList.add('hidden');
+                resultsContainer.classList.add('hidden');
+                
+                if (state === 'loading') loadingState.classList.remove('hidden');
+                if (state === 'results') resultsContainer.classList.remove('hidden');
+                if (state === 'placeholder') resultsPlaceholder.classList.remove('hidden');
+            };
+
+            const renderProducts = (products) => {
+                resultsGrid.innerHTML = '';
+                if (products.length === 0) {
+                    noResultsMessage.classList.remove('hidden');
+                } else {
+                    noResultsMessage.classList.add('hidden');
+                }
+                products.forEach(product => {
+                    const card = document.createElement('div');
+                    card.className = 'group relative product-card';
+                    card.dataset.similarity = product.similarity;
+                    
+                    card.innerHTML = `
+                        <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-md bg-gray-200 lg:aspect-none group-hover:opacity-75 h-52">
+                            <img src="${product.imageUrl}" alt="${product.name}" class="h-full w-full object-cover object-center lg:h-full lg:w-full" onerror="this.onerror=null;this.src='https://placehold.co/400x400/e2e8f0/475569?text=Image+Not+Found';">
+                        </div>
+                        <div class="mt-4 flex justify-between">
+                            <div>
+                                <h3 class="text-sm text-gray-700">
+                                    <span aria-hidden="true" class="absolute inset-0"></span>
+                                    ${product.name}
+                                </h3>
+                                <p class="mt-1 text-sm text-gray-500">${product.category}</p>
+                            </div>
+                            <p class="text-sm font-medium text-indigo-600 bg-indigo-100 px-2 py-1 rounded">${product.similarity}%</p>
+                        </div>
+                    `;
+                    resultsGrid.appendChild(card);
+                });
+            };
+
+            const findSimilarProductsAI = async (base64ImageData) => {
+                switchViewState('loading');
+                loadingText.textContent = 'Analyzing image with AI...';
+
+                const apiKey = "AIzaSyAg_sfljKGH9R33mFjqIGEMCO6SKWg_96A"; // This will be provided by the runtime environment.
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: "Describe the key visual features of the product in this image as a comma-separated list of keywords. Focus on object type, material, and color. For example: 'running shoe, mesh fabric, blue, white sole'." },
+                            { inlineData: { mimeType: "image/jpeg", data: base64ImageData } }
+                        ]
+                    }],
+                };
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        console.error("API Error Response:", errorBody);
+                        throw new Error(`API request failed with status ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (!text) {
+                        throw new Error("Could not get a description from the AI model.");
+                    }
+                    
+                    const keywords = text.toLowerCase().split(',').map(k => k.trim()).filter(Boolean);
+
+                    const matches = productDatabase.map(product => {
+                        let score = 0;
+                        const searchableText = `${product.name.toLowerCase()} ${product.category.toLowerCase()}`;
+                        const productTokens = searchableText.split(/\s+/); // Split by whitespace into individual words
+
+                        keywords.forEach(keyword => {
+                            // 1. Direct match gives a high score
+                            if (searchableText.includes(keyword)) {
+                                score += 2;
+                            }
+
+                            // 2. Partial match on individual words (handles plurals/variations like 'watch' vs 'watches')
+                            // This gives a smaller score to reward better direct matches.
+                            for (const token of productTokens) {
+                                if (token.startsWith(keyword) || keyword.startsWith(token)) {
+                                    score += 1;
+                                    break; // Avoid scoring multiple times for the same keyword on different tokens
+                                }
+                            }
+                        });
+                        
+                        return { ...product, score };
+                    }).filter(p => p.score > 0);
+
+                    if (matches.length === 0) {
+                        currentResults = [];
+                    } else {
+                        const maxScore = Math.max(...matches.map(p => p.score), 1);
+                        currentResults = matches.map(p => ({
+                            ...p,
+                            similarity: Math.min(100, 70 + Math.floor((p.score / maxScore) * 30))
+                        })).sort((a, b) => b.similarity - a.similarity);
+                    }
+
+                    applyFilter();
+                    switchViewState('results');
+
+                } catch (error) {
+                    console.error("AI Search Error:", error);
+                    displayError("Sorry, the AI search failed. This may be due to API restrictions or a network issue. Please try again.");
+                    switchViewState('placeholder');
+                }
+            };
+
+             const urlToBase64 = async (url) => {
+                try {
+                    const response = await fetch(url);
+                    const blob = await response.blob();
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(blob);
+                    });
+                } catch (error) {
+                    console.error('Error converting URL to Base64:', error);
+                    return null;
+                }
+            };
+            
+            const startSearchProcess = async (source) => {
+                clearError();
+                imagePreview.src = source.displayUrl;
+                imagePreviewContainer.classList.remove('hidden');
+
+                let base64Data;
+                if (source.type === 'file') {
+                    base64Data = source.data;
+                } else if (source.type === 'url') {
+                    switchViewState('loading');
+                    loadingText.textContent = 'Fetching image from URL...';
+                    base64Data = await urlToBase64(source.data);
+                    if (!base64Data) {
+                        displayError('Could not fetch image from the URL. The server may be blocking requests (CORS issue).');
+                        switchViewState('placeholder');
+                        return;
+                    }
+                }
+                
+                if (base64Data) {
+                    await findSimilarProductsAI(base64Data);
+                }
+            };
+
+
+            const handleFileUpload = (file) => {
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const dataUrl = e.target.result;
+                        const base64 = dataUrl.split(',')[1];
+                        startSearchProcess({ type: 'file', data: base64, displayUrl: dataUrl });
+                    };
+                    reader.onerror = () => {
+                        displayError('Could not read the selected file.');
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    displayError('Please select a valid image file (PNG, JPG, etc.).');
+                }
+            };
+            
+            const handleUrlSubmit = (e) => {
+                 e.preventDefault();
+                 const url = imageUrlInput.value.trim();
+                 if (url) {
+                    try {
+                        new URL(url);
+                        startSearchProcess({ type: 'url', data: url, displayUrl: url });
+                    } catch (_) {
+                        displayError('Please enter a valid image URL.');
+                    }
+                 } else {
+                    displayError('URL field cannot be empty.');
+                 }
+            };
+
+            const applyFilter = () => {
+                const threshold = parseInt(similarityFilter.value, 10);
+                filterValue.textContent = `≥${threshold}%`;
+                
+                const filteredResults = currentResults.filter(p => p.similarity >= threshold);
+                renderProducts(filteredResults);
+            };
+
+            // --- Event Listeners ---
+            fileUpload.addEventListener('change', (e) => handleFileUpload(e.target.files[0]));
+            urlForm.addEventListener('submit', handleUrlSubmit);
+            similarityFilter.addEventListener('input', applyFilter);
+            
+            imagePreview.addEventListener('error', () => {
+                displayError('Could not display the image from the provided URL. It might be protected.');
+                imagePreviewContainer.classList.add('hidden');
+                switchViewState('placeholder');
+            });
+
+            // --- Initializer ---
+            initFirebase();
+        });
+    </script>
+</body>
+</html>
+
+
